@@ -1,9 +1,9 @@
 // The one Supabase client the whole app uses to talk to the database and auth.
 // URL and key come from .env (EXPO_PUBLIC_ variables are bundled into the app; that's
 // fine for the publishable key because Row Level Security protects the data).
-import { AppState, Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createClient } from '@supabase/supabase-js'
+import { AppState, Platform } from 'react-native'
 
 // Read from .env; the ! tells TypeScript these are always set.
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!

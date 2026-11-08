@@ -96,3 +96,28 @@ create policy "users delete own reviews" on public.reviews
 -- 4. Interests shown as the "Into" chips on the profile page
 ------------------------------------------------------------
 alter table public.profiles add column if not exists interests text[] not null default '{}';
+
+------------------------------------------------------------
+-- 5. Leaderboard/ranking
+------------------------------------------------------------
+create or replace view public.sidequest_leaderboard
+with (security_invoker = true) as 
+select
+  b.profile_id,
+  count(*) as sidequests_attended
+  row_number() over (
+    order by count(*) desc, b.profile_id
+  ) as rank
+from public.event_buddies b
+join public.events e on e.id = b.event_id
+where e.status = "completed"
+group by b.profile_id;
+select 
+  l.profile_id,
+  l.rank,
+  l.sidequests_went_on,
+  p.username,
+  p.name
+from public.sidequest_leaderboard l
+join public.profiles p on p.id = l.profile_id
+order by l.rank

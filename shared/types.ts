@@ -58,3 +58,11 @@ export type EventBuddy = {
   profile_id: string
   joined_at: string
 }
+
+export type SidequestLeaderboardRow = {
+  profile_id : string
+  sidequests_went_on: number
+  rank: number
+  username?: string | null
+  name?: string | null
+}
