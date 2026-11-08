@@ -35,6 +35,23 @@ select
 from public.profiles p;
 
 ------------------------------------------------------------
+-- 2b. Sidequest leaderboard (rank by number of events joined)
+------------------------------------------------------------
+create or replace view public.sidequest_leaderboard
+with (security_invoker = true) as
+select
+  b.profile_id,
+  p.username,
+  p.name,
+  count(*) as sidequests_went_on,
+  row_number() over (
+    order by count(*) desc, b.profile_id
+  ) as rank
+from public.event_buddies b
+join public.profiles p on p.id = b.profile_id
+group by b.profile_id, p.username, p.name;
+
+------------------------------------------------------------
 -- 3. Row Level Security policies (first pass)
 --    Logged-in users can read everything; they can only
 --    write rows that belong to them.

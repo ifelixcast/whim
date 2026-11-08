@@ -1,13 +1,13 @@
 // "You" tab: your profile card (photo, name, interests), action buttons, and activity stats.
 // Sizes and positions come from the Figma profile design.
-import { useCallback, useState } from 'react'
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
 import { router, useFocusEffect } from 'expo-router'
+import { useCallback, useState } from 'react'
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { supabase } from '../../lib/supabase'
+import { Profile, ProfileStats, SidequestLeaderboardRow } from '../../../shared/types'
 import { useAuth } from '../../context/AuthContext'
-import { Profile, ProfileStats } from '../../../shared/types'
+import { supabase } from '../../lib/supabase'
 import { fonts, profileColors } from '../../lib/theme'
 
 // Figma profile frame: content is laid out in a 376pt column, centered on wider screens.
@@ -19,6 +19,15 @@ const AVATAR = { left: 35, top: 40, width: 129, height: 142 }
 const AVATAR_IMAGE = { left: -15.02, width: 163.79 }
 const TEXT_COLUMN = { left: 175, width: 144 }
 
+// Mock leaderboard data for previewing rankings.
+const MOCK_LEADERBOARD: SidequestLeaderboardRow[] = [
+  { profile_id: 'mock-1', username: 'milo', name: 'Milo', sidequests_went_on: 18, rank: 1 },
+  { profile_id: 'mock-2', username: 'sasha', name: 'Sasha', sidequests_went_on: 15, rank: 2 },
+  { profile_id: 'mock-3', username: 'nora', name: 'Nora', sidequests_went_on: 12, rank: 3 },
+  { profile_id: 'mock-4', username: 'leo', name: 'Leo', sidequests_went_on: 9, rank: 4 },
+  { profile_id: 'mock-5', username: 'you', name: 'You', sidequests_went_on: 7, rank: 5 },
+]
+
 export default function ProfileScreen() {
   // Logged-in user, safe-area sizes (notch / status bar), and the data shown on the page.
   const { session } = useAuth()
@@ -26,10 +35,11 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [stats, setStats] = useState<ProfileStats | null>(null)
+  const [leaderboard, setLeaderboard] = useState<SidequestLeaderboardRow[]>([])
   // Whether the small "..." menu (Sign out) is showing.
   const [menuOpen, setMenuOpen] = useState(false)
 
-  // Fetches your profile and your hosted/attended counts.
+  // Fetches your profile, counts, and sidequest leaderboard.
   const load = useCallback(async () => {
     if (!userId) return
 
@@ -41,6 +51,19 @@ export default function ProfileScreen() {
     // Counts come from the profile_stats view (see server/supabase/setup.sql).
     const { data: statsRow } = await supabase.from('profile_stats').select('*').eq('id', userId).single()
     setStats(statsRow)
+
+    const { data: leaderboardRows, error: leaderboardError } = await supabase
+      .from('sidequest_leaderboard')
+      .select('*')
+      .order('sidequests_went_on', { ascending: false })
+      .limit(5)
+
+    if (leaderboardError || !leaderboardRows || leaderboardRows.length === 0) {
+      setLeaderboard(MOCK_LEADERBOARD)
+      return
+    }
+
+    setLeaderboard((leaderboardRows ?? []) as SidequestLeaderboardRow[])
   }, [userId])
 
   // Reload every time this tab comes into view (e.g. after editing the profile).
@@ -143,6 +166,41 @@ export default function ProfileScreen() {
         {/* TODO: no attendance data yet to compute "Shows up". */}
         <Stat value="—" label="Shows up" />
       </View>
+
+      <View style={[styles.column, styles.leaderboardCard]}>
+        <Text style={styles.leaderboardTitle}>Leaderboard</Text>
+
+        {userId ? (
+          <View style={styles.youRankCard}>
+            <Text style={styles.youRankLabel}>Your rank</Text>
+            <Text style={styles.youRankValue}>
+              #{leaderboard.find((entry) => entry.profile_id === userId)?.rank ?? '—'}
+            </Text>
+            <Text style={styles.youRankCount}>
+              {leaderboard.find((entry) => entry.profile_id === userId)?.sidequests_went_on ?? 0} sidequests
+            </Text>
+          </View>
+        ) : null}
+
+        {leaderboard.length === 0 ? (
+          <Text style={styles.emptyText}>No one has ranked yet.</Text>
+        ) : (
+          leaderboard.map((entry) => {
+            const isCurrentUser = entry.profile_id === userId
+            const displayName = entry.username ? `@${entry.username}` : entry.name || 'Unknown user'
+
+            return (
+              <View key={entry.profile_id} style={[styles.leaderboardRow, isCurrentUser && styles.currentUserRow]}>
+                <Text style={styles.rank}>#{entry.rank}</Text>
+                <Text style={styles.leaderboardName} numberOfLines={1}>
+                  {isCurrentUser ? 'You' : displayName}
+                </Text>
+                <Text style={styles.leaderboardCount}>{entry.sidequests_went_on}</Text>
+              </View>
+            )
+          })
+        )}
+      </View>
     </ScrollView>
   )
 }
@@ -216,6 +274,84 @@ const styles = StyleSheet.create({
   menuItem: { fontFamily: fonts.semiBold, fontSize: 15, color: profileColors.ink },
   // Stats sit 12pt below the header, 20pt side insets, 8pt gaps.
   stats: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 12 },
+  leaderboardCard: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  leaderboardTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 18,
+    lineHeight: 24,
+    marginBottom: 8,
+    color: profileColors.ink,
+  },
+  youRankCard: {
+    backgroundColor: '#F2FAF0',
+    borderWidth: 1,
+    borderColor: '#7AB36A',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  youRankLabel: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: profileColors.slate,
+    marginBottom: 2,
+  },
+  youRankValue: {
+    fontFamily: fonts.bold,
+    fontSize: 22,
+    color: profileColors.ink,
+  },
+  youRankCount: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: profileColors.ink,
+    marginTop: 2,
+  },
+  leaderboardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: profileColors.border,
+    backgroundColor: profileColors.card,
+    marginBottom: 8,
+  },
+  currentUserRow: {
+    borderColor: '#7AB36A',
+    backgroundColor: '#F2FAF0',
+  },
+  rank: {
+    fontFamily: fonts.monoBold,
+    fontSize: 14,
+    color: profileColors.ink,
+    width: 32,
+  },
+  leaderboardName: {
+    flex: 1,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: profileColors.ink,
+    marginHorizontal: 8,
+  },
+  leaderboardCount: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: profileColors.ink,
+  },
+  emptyText: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: profileColors.slate,
+    paddingVertical: 8,
+  },
   // One white stat card with its number and label.
   stat: {
     flex: 1,

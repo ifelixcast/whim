@@ -59,10 +59,11 @@ export type EventBuddy = {
   joined_at: string
 }
 
+// Ranked sidequest counts derived from the event_buddies table.
 export type SidequestLeaderboardRow = {
-  profile_id : string
+  profile_id: string
+  username: string | null
+  name: string | null
   sidequests_went_on: number
   rank: number
-  username?: string | null
-  name?: string | null
 }
