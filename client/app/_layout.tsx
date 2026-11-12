@@ -21,7 +21,7 @@ SplashScreen.preventAutoHideAsync()
 // Decides what to show: the splash while loading, then the right screens for the user.
 function RootNavigator() {
   // session is null when logged out; loading is true until we know either way.
-  const { session, loading } = useAuth()
+  const { session, loading, needsOnboarding } = useAuth()
 
   // Every font the app uses must be listed here, or text falls back to the system font.
   const [fontsLoaded] = useFonts({
@@ -42,8 +42,13 @@ function RootNavigator() {
   // Ready: each Stack.Protected group is only reachable while its `guard` is true.
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/* Logged in: the tab screens in app/(tabs), plus Edit profile opened on top of them. */}
-      <Stack.Protected guard={!!session}>
+      {/* Just signed up: pick interests first. Swipe-back is off so it can't be dismissed. */}
+      <Stack.Protected guard={!!session && needsOnboarding}>
+        <Stack.Screen name="select-interests" options={{ gestureEnabled: false }} />
+      </Stack.Protected>
+
+      {/* Logged in and onboarded: the tab screens in app/(tabs), plus Edit profile opened on top of them. */}
+      <Stack.Protected guard={!!session && !needsOnboarding}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="edit-profile" options={{ headerShown: true, title: 'Edit profile', headerBackTitle: 'Back' }} />
       </Stack.Protected>

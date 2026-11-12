@@ -32,7 +32,9 @@
           "image": "./client/assets/images/brand/splash-logo.png",
           "imageWidth": 389
         }
-      ]
+      ],
+      "expo-web-browser",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

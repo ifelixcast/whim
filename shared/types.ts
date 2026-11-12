@@ -14,6 +14,7 @@ export type Profile = {
   bio: string | null
   university_id: number | null
   interests: string[] | null // shown as the "Into" chips; see server/supabase/setup.sql section 4
+  onboarding_completed: boolean // false until they finish or skip the interests screen
   created_at: string
 }
 

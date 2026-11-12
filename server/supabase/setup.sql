@@ -115,6 +115,13 @@ create policy "users delete own reviews" on public.reviews
 alter table public.profiles add column if not exists interests text[] not null default '{}';
 
 ------------------------------------------------------------
+-- 4b. Tracks whether someone has seen the "pick your interests" screen after signing up.
+--     Run this once in the Supabase SQL editor. Existing users will see the screen once too;
+--     to skip that for them, also run:  update public.profiles set onboarding_completed = true;
+------------------------------------------------------------
+alter table public.profiles add column if not exists onboarding_completed boolean not null default false;
+
+------------------------------------------------------------
 -- 5. Leaderboard/ranking
 ------------------------------------------------------------
 create or replace view public.sidequest_leaderboard
