@@ -105,7 +105,7 @@ export default function ProfileScreen() {
             </View>
             <Image source={require('../../assets/images/profile/avatar-frame.svg')} style={styles.avatarFrame} />
 
-            {/* Right side of the card: name, @username, and "Into" interest chips. */}
+            {/* Right side of the card: name and @username. */}
             <View style={styles.textColumn}>
               <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit>
                 {profile?.name || 'Your name'}
@@ -113,17 +113,6 @@ export default function ProfileScreen() {
               <Text style={styles.handle} numberOfLines={1}>
                 {username}
               </Text>
-              <Text style={styles.into}>Into</Text>
-              <View style={styles.chips}>
-                {/* Two chips fit the card; the rest are left out. */}
-                {(profile?.interests ?? []).slice(0, 2).map((interest) => (
-                  <View key={interest} style={styles.chip}>
-                    <Text style={styles.chipText} numberOfLines={1}>
-                      {interest}
-                    </Text>
-                  </View>
-                ))}
-              </View>
             </View>
           </View>
 
@@ -165,6 +154,22 @@ export default function ProfileScreen() {
         <Stat value={stats?.events_hosted ?? 0} label="Hosted" />
         {/* TODO: no attendance data yet to compute "Shows up". */}
         <Stat value="—" label="Shows up" />
+      </View>
+
+      {/* Every event tag you picked; change them under Edit profile. */}
+      <View style={[styles.column, styles.interestsCard]}>
+        <Text style={styles.leaderboardTitle}>Event interests</Text>
+        {(profile?.interests ?? []).length === 0 ? (
+          <Text style={styles.emptyText}>Tap Edit profile to pick the events you&apos;re into.</Text>
+        ) : (
+          <View style={styles.interestChips}>
+            {(profile?.interests ?? []).map((interest) => (
+              <View key={interest} style={[styles.chip, styles.interestChip]}>
+                <Text style={styles.chipText}>{interest}</Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={[styles.column, styles.leaderboardCard]}>
@@ -231,14 +236,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   avatarFrame: { position: 'absolute', left: 36, top: 41, width: 127, height: 140 },
-  // Name, @username and "Into" text on the right of the card.
+  // Name and @username text on the right of the card.
   textColumn: { position: 'absolute', left: TEXT_COLUMN.left, top: 50, width: TEXT_COLUMN.width, alignItems: 'center' },
   name: { fontFamily: fonts.monoBold, fontSize: 24, lineHeight: 31, color: profileColors.black, textAlign: 'center' },
   // Figma tops (card-relative): name 50, handle 81, "Into" 118, chips 145.
   handle: { fontFamily: fonts.mono, fontSize: 16, lineHeight: 21, marginBottom: 16, color: profileColors.handle, textAlign: 'center' },
-  into: { fontFamily: fonts.monoBold, fontSize: 16, lineHeight: 21, marginBottom: 6, color: profileColors.black, textAlign: 'center' },
-  // White rounded "Into" interest chips.
-  chips: { flexDirection: 'row', gap: 10 },
+  // White rounded interest chips (used in the Event interests section).
   chip: {
     height: 36,
     maxWidth: 67,
@@ -274,6 +277,10 @@ const styles = StyleSheet.create({
   menuItem: { fontFamily: fonts.semiBold, fontSize: 15, color: profileColors.ink },
   // Stats sit 12pt below the header, 20pt side insets, 8pt gaps.
   stats: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 12 },
+  // Event interests section under the stats; chips wrap onto extra lines.
+  interestsCard: { marginTop: 16, paddingHorizontal: 20 },
+  interestChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  interestChip: { maxWidth: undefined },
   leaderboardCard: {
     marginTop: 16,
     paddingHorizontal: 20,

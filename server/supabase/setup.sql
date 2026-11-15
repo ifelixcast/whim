@@ -35,21 +35,24 @@ select
 from public.profiles p;
 
 ------------------------------------------------------------
--- 2b. Sidequest leaderboard (rank by number of events joined)
+-- 2b. Sidequest leaderboard
+--     sidequests = activities attended + activities hosted, i.e. the "Activities" and
+--     "Hosted" numbers on the profile page (both come from profile_stats above).
+--     Only people with at least one sidequest are ranked.
 ------------------------------------------------------------
 create or replace view public.sidequest_leaderboard
 with (security_invoker = true) as
 select
-  b.profile_id,
+  p.id as profile_id,
   p.username,
   p.name,
-  count(*) as sidequests_went_on,
+  (s.events_attended + s.events_hosted) as sidequests_went_on,
   row_number() over (
-    order by count(*) desc, b.profile_id
+    order by (s.events_attended + s.events_hosted) desc, p.id
   ) as rank
-from public.event_buddies b
-join public.profiles p on p.id = b.profile_id
-group by b.profile_id, p.username, p.name;
+from public.profiles p
+join public.profile_stats s on s.id = p.id
+where (s.events_attended + s.events_hosted) > 0;
 
 ------------------------------------------------------------
 -- 3. Row Level Security policies (first pass)
@@ -120,28 +123,3 @@ alter table public.profiles add column if not exists interests text[] not null d
 --     to skip that for them, also run:  update public.profiles set onboarding_completed = true;
 ------------------------------------------------------------
 alter table public.profiles add column if not exists onboarding_completed boolean not null default false;
-
-------------------------------------------------------------
--- 5. Leaderboard/ranking
-------------------------------------------------------------
-create or replace view public.sidequest_leaderboard
-with (security_invoker = true) as 
-select
-  b.profile_id,
-  count(*) as sidequests_attended
-  row_number() over (
-    order by count(*) desc, b.profile_id
-  ) as rank
-from public.event_buddies b
-join public.events e on e.id = b.event_id
-where e.status = "completed"
-group by b.profile_id;
-select 
-  l.profile_id,
-  l.rank,
-  l.sidequests_went_on,
-  p.username,
-  p.name
-from public.sidequest_leaderboard l
-join public.profiles p on p.id = l.profile_id
-order by l.rank
