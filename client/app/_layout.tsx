@@ -12,6 +12,8 @@ import {
 } from '@expo-google-fonts/bricolage-grotesque'
 import { IntelOneMono_400Regular, IntelOneMono_700Bold } from '@expo-google-fonts/intel-one-mono'
 import { Inter_700Bold } from '@expo-google-fonts/inter'
+import { Gaegu_700Bold } from '@expo-google-fonts/gaegu'
+import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display'
 import { AuthProvider, useAuth } from '../context/AuthContext'
 import Splash from '../components/Splash'
 
@@ -32,6 +34,9 @@ function RootNavigator() {
     IntelOneMono_400Regular,
     IntelOneMono_700Bold,
     Inter_700Bold,
+    // Scrapbook text styles.
+    Gaegu_700Bold,
+    DMSerifDisplay_400Regular,
   })
 
   // Still starting up: show the splash, then hide the native one once ours has drawn.
@@ -42,10 +47,19 @@ function RootNavigator() {
   // Ready: each Stack.Protected group is only reachable while its `guard` is true.
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/* Logged in: the tab screens in app/(tabs), plus Edit profile opened on top of them. */}
+      {/* Logged in: the tab screens in app/(tabs), plus Edit profile and Scrapbook opened on top of them. */}
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="edit-profile" options={{ headerShown: true, title: 'Edit profile', headerBackTitle: 'Back' }} />
+        {/* Scrapbook: the list of pages (opened from the You tab), and the page editor. */}
+        <Stack.Screen
+          name="scrapbook/index"
+          options={{ headerShown: true, title: 'Scrapbook', headerBackTitle: 'Back', headerShadowVisible: false }}
+        />
+        <Stack.Screen
+          name="scrapbook/[eventId]"
+          options={{ headerShown: true, title: 'Your page', headerBackTitle: 'Scrapbook', headerShadowVisible: false }}
+        />
       </Stack.Protected>
 
       {/* Logged out: only the sign-in screen */}

@@ -32,6 +32,14 @@
           "image": "./client/assets/images/brand/splash-logo.png",
           "imageWidth": 389
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Whim! uses your photos so you can add them to your scrapbook pages.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {
