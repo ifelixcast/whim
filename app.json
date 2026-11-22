@@ -43,7 +43,14 @@
           "microphonePermission": false
         }
       ],
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Whim! uses your location to set where your whim is happening."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
