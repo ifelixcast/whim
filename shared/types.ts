@@ -70,3 +70,59 @@ export type SidequestLeaderboardRow = {
   sidequests_went_on: number
   rank: number
 }
+
+// ---- Scrapbook (the "scrapbook_pages" table, see server/supabase/scrapbook.sql) ----
+// Positions and sizes are in "page units": every page is 300 wide and 400 tall, and the
+// app scales that to the phone's screen, so a page looks the same on every phone.
+
+// Text styles on a page. The app maps each one to a font.
+export type ScrapbookFont = 'hand' | 'mono' | 'headline' | 'serif'
+
+// How a photo is framed.
+export type ScrapbookFrame = 'print' | 'polaroid' | 'plain'
+
+// Fields every item on a page has: top-left corner, width, and tilt in degrees.
+type ScrapbookItemBase = {
+  id: string
+  x: number
+  y: number
+  w: number
+  rotation: number
+}
+
+// A photo from the phone. `path` is where it lives in the "scrapbook" storage bucket;
+// `aspect` is height divided by width.
+export type ScrapbookPhotoItem = ScrapbookItemBase & {
+  kind: 'photo'
+  path: string
+  aspect: number
+  frame: ScrapbookFrame
+}
+
+// Typed text. `label` puts a strip of tape behind it.
+export type ScrapbookTextItem = ScrapbookItemBase & {
+  kind: 'text'
+  text: string
+  font: ScrapbookFont
+  color: string
+  size: number
+  label: boolean
+}
+
+// A built-in sticker (tape, stamp, arrow...). `scrap` is its key in client/lib/scrapbook.ts.
+export type ScrapbookScrapItem = ScrapbookItemBase & {
+  kind: 'scrap'
+  scrap: string
+}
+
+export type ScrapbookItem = ScrapbookPhotoItem | ScrapbookTextItem | ScrapbookScrapItem
+
+// One person's page for one event. Items are drawn in array order, so the last is on top.
+export type ScrapbookPage = {
+  id: number
+  profile_id: string
+  event_id: number
+  paper: string
+  items: ScrapbookItem[]
+  updated_at: string
+}

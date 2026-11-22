@@ -210,6 +210,21 @@ export default function ProfileScreen() {
           })
         )}
       </View>
+
+      {/* Link to the Scrapbook: pages for every activity you've been to. */}
+      <View style={[styles.column, styles.scrapbookWrap]}>
+        <Pressable
+          onPress={() => router.push('/scrapbook')}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.scrapbookCard, pressed && { opacity: 0.7 }]}
+        >
+          <View style={styles.scrapbookText}>
+            <Text style={styles.scrapbookTitle}>Scrapbook</Text>
+            <Text style={styles.scrapbookSubtitle}>Photos, notes and scraps from your activities</Text>
+          </View>
+          <Text style={styles.scrapbookArrow}>›</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   )
 }
@@ -378,4 +393,20 @@ const styles = StyleSheet.create({
   },
   statValue: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 31.9, color: profileColors.ink, textAlign: 'center' },
   statLabel: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 17.4, color: profileColors.slate, textAlign: 'center' },
+  // Scrapbook link card, same insets and card style as the stats.
+  scrapbookWrap: { paddingHorizontal: 20, marginTop: 12 },
+  scrapbookCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: profileColors.border,
+    backgroundColor: profileColors.card,
+  },
+  scrapbookText: { flex: 1 },
+  scrapbookTitle: { fontFamily: fonts.bold, fontSize: 17, color: profileColors.ink },
+  scrapbookSubtitle: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: profileColors.slate, marginTop: 2 },
+  scrapbookArrow: { fontFamily: fonts.bold, fontSize: 24, color: profileColors.slate },
 })

@@ -15,6 +15,8 @@ import { Fraunces_700Bold } from '@expo-google-fonts/fraunces'
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter'
 import { Jost_700Bold } from '@expo-google-fonts/jost'
 import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono'
+import { Gaegu_700Bold } from '@expo-google-fonts/gaegu'
+import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display'
 import { AuthProvider, useAuth } from '../context/AuthContext'
 import Splash from '../components/Splash'
 
@@ -42,6 +44,9 @@ function RootNavigator() {
     Jost_700Bold,
     SpaceMono_400Regular,
     SpaceMono_700Bold,
+    // Scrapbook text styles.
+    Gaegu_700Bold,
+    DMSerifDisplay_400Regular,
   })
 
   // Still starting up: show the splash, then hide the native one once ours has drawn.
@@ -63,6 +68,15 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="profile/edit" />
         <Stack.Screen name="profile/interests" />
+        {/* Scrapbook: the list of pages (opened from the You tab), and the page editor. */}
+        <Stack.Screen
+          name="scrapbook/index"
+          options={{ headerShown: true, title: 'Scrapbook', headerBackTitle: 'Back', headerShadowVisible: false }}
+        />
+        <Stack.Screen
+          name="scrapbook/[eventId]"
+          options={{ headerShown: true, title: 'Your page', headerBackTitle: 'Scrapbook', headerShadowVisible: false }}
+        />
       </Stack.Protected>
 
       {/* Logged out: only the sign-in screen */}
