@@ -11,6 +11,7 @@ import BottomBar from '../../components/BottomBar'
 import GradientBackground from '../../components/GradientBackground'
 import PrimaryButton from '../../components/PrimaryButton'
 import ScreenHeader from '../../components/ScreenHeader'
+import StarBorder from '../../components/StarBorder'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { fonts, whimColors } from '../../lib/theme'
@@ -149,7 +150,7 @@ export default function EditProfile() {
 
           {/* A) Brown ID card: photo plus a live preview of name, username and bio. */}
           <View style={styles.idCard}>
-            <Stars />
+            <StarBorder color={whimColors.stars} />
             <View>
               <View style={styles.photo}>
                 {/* The newly picked photo (not saved yet), else the saved one, else the placeholder color. */}
@@ -275,18 +276,6 @@ export default function EditProfile() {
   )
 }
 
-// Decorative star border around the ID card; hidden from screen readers.
-function Stars() {
-  const row = (count: number) => Array.from({ length: count }, (_, index) => <Text key={index} style={styles.star}>★</Text>)
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <View style={[styles.starRow, { top: 10 }]}>{row(13)}</View>
-      <View style={[styles.starRow, { bottom: 10 }]}>{row(13)}</View>
-      <View style={[styles.starColumn, { left: 11 }]}>{row(7)}</View>
-      <View style={[styles.starColumn, { right: 11 }]}>{row(7)}</View>
-    </View>
-  )
-}
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
@@ -311,9 +300,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 8,
   },
-  star: { color: whimColors.stars, fontSize: 15, lineHeight: 17 },
-  starRow: { position: 'absolute', left: 22, right: 22, flexDirection: 'row', justifyContent: 'space-between' },
-  starColumn: { position: 'absolute', top: 30, bottom: 30, justifyContent: 'space-between' },
   photo: {
     width: 104,
     height: 126,
@@ -337,10 +323,11 @@ const styles = StyleSheet.create({
   },
   cameraIcon: { width: 20, height: 20 },
   dimmed: { opacity: 0.6 },
-  idText: { flex: 1, gap: 6 },
-  idName: { fontFamily: fonts.spaceMonoBold, fontSize: 26, color: whimColors.brownText },
-  idHandle: { fontFamily: fonts.spaceMono, fontSize: 13, color: whimColors.brownSecondary },
-  idBio: { fontFamily: fonts.interRegular, fontSize: 13, lineHeight: 18, color: whimColors.brownText, marginTop: 4 },
+  // Text column, centered like the original profile card.
+  idText: { flex: 1, gap: 6, alignItems: 'center' },
+  idName: { fontFamily: fonts.spaceMonoBold, fontSize: 26, color: whimColors.brownText, textAlign: 'center' },
+  idHandle: { fontFamily: fonts.spaceMono, fontSize: 13, color: whimColors.brownSecondary, textAlign: 'center' },
+  idBio: { fontFamily: fonts.interRegular, fontSize: 13, lineHeight: 18, color: whimColors.brownText, marginTop: 4, textAlign: 'center' },
 
   // B) Details card
   details: {
