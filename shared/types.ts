@@ -11,10 +11,12 @@ export type Profile = {
   username: string | null
   name: string | null
   birthday: string | null // 'YYYY-MM-DD'
-  bio: string | null
+  bio: string | null // up to 80 characters (Edit profile limits it)
+  phone: string | null // see setup.sql section 6
   university_id: number | null
   interests: string[] | null // shown as the "Into" chips; see server/supabase/setup.sql section 4
   avatar_url: string | null // public URL of the photo in the "avatars" bucket; see setup.sql section 5
+  onboarding_completed: boolean // false until they finish or skip the interests screen
   created_at: string
 }
 
@@ -58,4 +60,13 @@ export type EventBuddy = {
   event_id: number
   profile_id: string
   joined_at: string
+}
+
+// Ranked sidequest counts derived from the event_buddies table.
+export type SidequestLeaderboardRow = {
+  profile_id: string
+  username: string | null
+  name: string | null
+  sidequests_went_on: number
+  rank: number
 }

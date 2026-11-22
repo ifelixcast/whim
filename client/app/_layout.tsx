@@ -11,8 +11,10 @@ import {
   useFonts,
 } from '@expo-google-fonts/bricolage-grotesque'
 import { IntelOneMono_400Regular, IntelOneMono_700Bold } from '@expo-google-fonts/intel-one-mono'
-import { Inter_700Bold } from '@expo-google-fonts/inter'
+import { Fraunces_700Bold } from '@expo-google-fonts/fraunces'
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter'
 import { Jost_700Bold } from '@expo-google-fonts/jost'
+import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono'
 import { AuthProvider, useAuth } from '../context/AuthContext'
 import Splash from '../components/Splash'
 
@@ -22,7 +24,7 @@ SplashScreen.preventAutoHideAsync()
 // Decides what to show: the splash while loading, then the right screens for the user.
 function RootNavigator() {
   // session is null when logged out; loading is true until we know either way.
-  const { session, loading } = useAuth()
+  const { session, loading, needsOnboarding } = useAuth()
 
   // Every font the app uses must be listed here, or text falls back to the system font.
   const [fontsLoaded] = useFonts({
@@ -32,8 +34,14 @@ function RootNavigator() {
     BricolageGrotesque_700Bold,
     IntelOneMono_400Regular,
     IntelOneMono_700Bold,
+    Fraunces_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
     Inter_700Bold,
     Jost_700Bold,
+    SpaceMono_400Regular,
+    SpaceMono_700Bold,
   })
 
   // Still starting up: show the splash, then hide the native one once ours has drawn.
@@ -44,11 +52,17 @@ function RootNavigator() {
   // Ready: each Stack.Protected group is only reachable while its `guard` is true.
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/* Logged in: the tab screens in app/(tabs), plus Edit profile opened on top of them. */}
-      <Stack.Protected guard={!!session}>
+      {/* Just signed up: pick interests first. Swipe-back is off so it can't be dismissed. */}
+      <Stack.Protected guard={!!session && needsOnboarding}>
+        <Stack.Screen name="select-interests" options={{ gestureEnabled: false }} />
+      </Stack.Protected>
+
+      {/* Logged in and onboarded: the tab screens in app/(tabs), plus Edit profile and its
+          interest picker (app/profile) opened on top of them. Both draw their own header. */}
+      <Stack.Protected guard={!!session && !needsOnboarding}>
         <Stack.Screen name="(tabs)" />
-        {/* Edit profile draws its own "Edit profile" title, so the default top bar is hidden. */}
-        <Stack.Screen name="edit-profile" />
+        <Stack.Screen name="profile/edit" />
+        <Stack.Screen name="profile/interests" />
       </Stack.Protected>
 
       {/* Logged out: only the sign-in screen */}

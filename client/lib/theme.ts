@@ -54,6 +54,24 @@ export const tabColors = {
   createActivity: '#F04400', // the orange + (create activity) button
 }
 
+// Edit profile and interest picker (Whim green redesign).
+export const whimColors = {
+  ink: '#163A2A', // dark green text and buttons
+  label: '#3D5A49', // field labels
+  body: '#1F3D2D', // subtitles, small headings
+  cream: '#FFFBEF',
+  creamCard: 'rgba(255,251,239,0.85)',
+  brown: '#4A2A22', // ID card
+  brownText: '#F4EFE2',
+  brownSecondary: '#E2D2BE',
+  stars: '#D8C6B4',
+  photoPlaceholder: '#C9D6E0',
+  danger: '#8E2A17', // Delete account
+  divider: 'rgba(22,58,42,0.12)',
+  dashed: 'rgba(22,58,42,0.4)', // dashed outlines on unpicked chips and the interests box
+  glass: 'rgba(255,255,255,0.3)', // see-through fill behind dashed outlines
+}
+
 // FONTS Loaded in client/app/_layout.tsx via @expo-google-fonts (bricolage-grotesque, intel-one-mono, inter, jost).
 export const fonts = {
   regular: 'BricolageGrotesque_400Regular',
@@ -64,4 +82,11 @@ export const fonts = {
   monoBold: 'IntelOneMono_700Bold',
   interBold: 'Inter_700Bold',
   jostBold: 'Jost_700Bold',
+  // Edit profile + interest picker (Whim green redesign).
+  fraunces: 'Fraunces_700Bold',
+  interRegular: 'Inter_400Regular',
+  interMedium: 'Inter_500Medium',
+  interSemiBold: 'Inter_600SemiBold',
+  spaceMono: 'SpaceMono_400Regular',
+  spaceMonoBold: 'SpaceMono_700Bold',
 }
