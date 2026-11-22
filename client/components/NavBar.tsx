@@ -1,11 +1,12 @@
-// Custom bottom tab bar (Figma "Nav - App tabs"): Home, Map, the orange + (create activity), Inbox, You.
+// Custom bottom tab bar: Home, Map, the orange + (create activity), Inbox, You.
+// A white rounded bar floating above the bottom edge; screens scroll underneath it.
 // Used by app/(tabs)/_layout.tsx. Tab labels come from each screen's `title` option there.
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
 import type { BottomTabBarProps } from 'expo-router/tabs'
-import { fonts, profileColors, tabColors } from '../lib/theme'
+import { fonts, tabColors } from '../lib/theme'
 
-// Icons from the Figma "Nav - App tabs". They are single-color outlines, tinted per state.
+// Single-color outline icons, tinted per state.
 const ICONS: Record<string, number> = {
   index: require('../assets/images/tabs/home.svg'),
   map: require('../assets/images/tabs/map.svg'),
@@ -21,8 +22,8 @@ const CREATE_ACTIVITY_ROUTE = 'create-activity'
 // a function to switch tabs, and the safe-area sizes (insets).
 export default function NavBar({ state, descriptors, navigateToTab, insets }: BottomTabBarProps) {
   return (
-    // The white bar holding the icons of the nav bar; extra bottom padding keeps it above
-    <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    // Floats 16pt above the home indicator / bottom edge.
+    <View style={[styles.bar, { bottom: 16 + insets.bottom }]}>
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key]
         // Only routes with an icon (plus the create activity button) get a tab.
@@ -44,23 +45,28 @@ export default function NavBar({ state, descriptors, navigateToTab, insets }: Bo
               <Pressable
                 onPress={onPress}
                 accessibilityRole="button"
-                accessibilityLabel={label}
+                accessibilityLabel="Create activity"
                 accessibilityState={{ selected: focused }}
                 style={({ pressed }) => [styles.createActivityButton, pressed && styles.pressed]}
               >
-                <Image source={require('../assets/images/tabs/create-activity-plus.svg')} style={styles.createActivityIcon} />
+                <Image
+                  source={require('../assets/images/tabs/create-activity-plus.svg')}
+                  tintColor="#FFFFFF"
+                  style={styles.createActivityIcon}
+                />
               </Pressable>
             </View>
           )
         }
 
-        // A normal tab: icon and label, teal when selected and grey otherwise.
+        // A normal tab: icon above label, dark teal when selected and grey otherwise.
         const color = focused ? tabColors.active : tabColors.inactive
         return (
           <Pressable
             key={route.key}
             onPress={onPress}
             accessibilityRole="tab"
+            accessibilityLabel={label}
             accessibilityState={{ selected: focused }}
             style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
           >
@@ -74,32 +80,42 @@ export default function NavBar({ state, descriptors, navigateToTab, insets }: Bo
 }
 
 const styles = StyleSheet.create({
-  // Five equal-width tabs with 10pt padding on each side and 8pt above
   bar: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    height: 74,
+    borderRadius: 30,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    backgroundColor: profileColors.card,
-    borderTopWidth: 0.75,
-    borderTopColor: profileColors.border,
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    backgroundColor: tabColors.bar,
+    shadowColor: tabColors.shadow,
+    shadowOpacity: 0.16,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
   },
-  // One tab slot, its icon, and its label.
-  tab: { flex: 1, alignItems: 'center', gap: 1.48 },
-  icon: { width: 22, height: 22 },
-  label: { fontFamily: fonts.semiBold, fontSize: 11, lineHeight: 15.95, textAlign: 'center' },
-  // + create button raised 19pt above the other buttons.
+  // One tab slot: the full bar height, so every tab is well over 44pt tall.
+  tab: { flex: 1, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  icon: { width: 24, height: 24 },
+  label: { fontFamily: fonts.interSemiBold, fontSize: 12, textAlign: 'center' },
+  // + create button, raised above the bar.
   createActivityButton: {
-    width: 56,
-    height: 56,
-    marginTop: -19.03,
-    borderRadius: 20,
+    width: 64,
+    height: 64,
+    marginTop: -36,
+    borderRadius: 24,
     backgroundColor: tabColors.createActivity,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0px 8px 20px -8px rgba(255, 179, 33, 0.8)',
+    shadowColor: tabColors.createActivity,
+    shadowOpacity: 0.3,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
-  createActivityIcon: { width: 28, height: 28 },
+  createActivityIcon: { width: 30, height: 30 },
   // Slight fade while a button is being pressed.
   pressed: { opacity: 0.7 },
 })
