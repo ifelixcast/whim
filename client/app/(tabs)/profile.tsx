@@ -1,49 +1,62 @@
-// "You" tab: your profile card (photo, name, interests), action buttons, and activity stats.
-// Sizes and positions come from the Figma profile design.
+// "You" tab: two gradient "bubbles" that scroll together.
+// Top bubble: your ID card (photo, name, @username, bio) and the Edit profile / Share / More buttons.
+// Bottom bubble: a frosted stats strip (rank, activities, hosted, shows up), your interests,
+// and a row of your newest Scrapbook pages (the Scrapbook itself is a teammate's feature).
+import { ComponentRef, useCallback, useRef, useState } from 'react'
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
+import { BlurTargetView } from 'expo-blur'
 import { Image } from 'expo-image'
 import { router, useFocusEffect } from 'expo-router'
-import { useCallback, useState } from 'react'
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Profile, ProfileStats, SidequestLeaderboardRow } from '../../../shared/types'
+import { Profile, ProfileStats } from '../../../shared/types'
+import Frosted from '../../components/Frosted'
+import ScrapbookPreview from '../../components/scrapbook/ScrapbookPreview'
+import GradientFill, { GradientFallback } from '../../components/GradientFill'
+import StarBorder from '../../components/StarBorder'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { fonts, profileColors } from '../../lib/theme'
+import { fonts, whimColors, youColors } from '../../lib/theme'
 
-// Figma profile frame: content is laid out in a 376pt column, centered on wider screens.
-const COLUMN_WIDTH = 376
-// The stamp card is 350x222; avatar and text positions below are relative to it.
-const CARD = { width: 350, height: 222 }
-const AVATAR = { left: 35, top: 40, width: 129, height: 142 }
-// The avatar image is 126.97% of the box width, shifted left 11.64% (Figma crop).
-const AVATAR_IMAGE = { left: -15.02, width: 163.79 }
-const TEXT_COLUMN = { left: 175, width: 144 }
-
-// Mock leaderboard data for previewing rankings.
-const MOCK_LEADERBOARD: SidequestLeaderboardRow[] = [
-  { profile_id: 'mock-1', username: 'milo', name: 'Milo', sidequests_went_on: 18, rank: 1 },
-  { profile_id: 'mock-2', username: 'sasha', name: 'Sasha', sidequests_went_on: 15, rank: 2 },
-  { profile_id: 'mock-3', username: 'nora', name: 'Nora', sidequests_went_on: 12, rank: 3 },
-  { profile_id: 'mock-4', username: 'leo', name: 'Leo', sidequests_went_on: 9, rank: 4 },
-  { profile_id: 'mock-5', username: 'you', name: 'You', sidequests_went_on: 7, rank: 5 },
-]
+// Bubble gradients: soft color blobs (radial) over a vertical base (linear).
+const TOP_GRADIENT = {
+  css: [
+    'radial-gradient(70% 60% at 10% 0%, #B4C8D6, transparent 70%)',
+    'radial-gradient(60% 55% at 95% 20%, #7FA66A, transparent 70%)',
+    'radial-gradient(70% 60% at 0% 80%, #4A8640, transparent 70%)',
+    'radial-gradient(60% 50% at 95% 95%, #A7BCCB, transparent 70%)',
+    'linear-gradient(180deg, #A9C0CE, #7EA46E 50%, #5A9148)',
+  ].join(', '),
+  fallback: { colors: ['#A9C0CE', '#7EA46E', '#5A9148'], locations: [0, 0.5, 1] } as GradientFallback,
+}
+const BOTTOM_GRADIENT = {
+  css: [
+    'radial-gradient(70% 45% at 90% 0%, #A7BCCB, transparent 70%)',
+    'radial-gradient(70% 45% at 0% 35%, #7FA66A, transparent 70%)',
+    'radial-gradient(70% 45% at 100% 80%, #8FB07E, transparent 70%)',
+    'radial-gradient(70% 40% at 10% 100%, #B4C8D6, transparent 70%)',
+    'linear-gradient(180deg, #9DBA8C, #A3BE8E 55%, #B3C8C6)',
+  ].join(', '),
+  fallback: { colors: ['#9DBA8C', '#A3BE8E', '#B3C8C6'], locations: [0, 0.55, 1] } as GradientFallback,
+}
 
 export default function ProfileScreen() {
-  // Logged-in user, safe-area sizes (notch / status bar), and the data shown on the page.
+  // Logged-in user, safe-area sizes (notch / home indicator), and the data shown on the page.
   const { session } = useAuth()
   const userId = session?.user.id
   const insets = useSafeAreaInsets()
+  // The content the frosted cards blur on Android.
+  const blurTarget = useRef<ComponentRef<typeof View>>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [stats, setStats] = useState<ProfileStats | null>(null)
-  const [leaderboard, setLeaderboard] = useState<SidequestLeaderboardRow[]>([])
+  const [rank, setRank] = useState<number | null>(null)
   // Whether the small "..." menu (Sign out) is showing.
   const [menuOpen, setMenuOpen] = useState(false)
 
-  // Fetches your profile, counts, and sidequest leaderboard.
+  // Fetches your profile, your hosted/attended counts, and your leaderboard rank.
   const load = useCallback(async () => {
     if (!userId) return
 
-    // select('*') so this still works before the interests column exists (server/supabase/setup.sql section 4).
+    // select('*') so this still works before newer columns exist (server/supabase/setup.sql).
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single()
     if (error) Alert.alert('Could not load profile', error.message)
     else setProfile(data)
@@ -52,29 +65,25 @@ export default function ProfileScreen() {
     const { data: statsRow } = await supabase.from('profile_stats').select('*').eq('id', userId).single()
     setStats(statsRow)
 
-    const { data: leaderboardRows, error: leaderboardError } = await supabase
+    // Your row in the sidequest leaderboard; there's none until you've been to or hosted something.
+    const { data: rankRow } = await supabase
       .from('sidequest_leaderboard')
-      .select('*')
-      .order('sidequests_went_on', { ascending: false })
-      .limit(5)
+      .select('rank')
+      .eq('profile_id', userId)
+      .maybeSingle()
+    setRank(rankRow?.rank ?? null)
 
-    if (leaderboardError || !leaderboardRows || leaderboardRows.length === 0) {
-      setLeaderboard(MOCK_LEADERBOARD)
-      return
-    }
-
-    setLeaderboard((leaderboardRows ?? []) as SidequestLeaderboardRow[])
   }, [userId])
 
-  // Reload every time this tab comes into view (e.g. after editing the profile).
+  // Reload every time this tab comes into view (e.g. after editing the profile or interests).
   useFocusEffect(
     useCallback(() => {
       load()
     }, [load])
   )
 
-  // "@name" for display, with a placeholder until a username is set.
   const username = profile?.username ? `@${profile.username}` : '@username'
+  const interests = profile?.interests ?? []
 
   // Opens the phone's share sheet.
   async function share() {
@@ -86,150 +95,140 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 24 }}>
-      {/* Green header; insets.top keeps it clear of the status bar / notch. */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <View style={styles.column}>
-          {/* Profile card: star-bordered background with the photo and text laid on top. */}
-          <View style={styles.card}>
-            <Image source={require('../../assets/images/profile/star-card.png')} style={StyleSheet.absoluteFill} />
+    <View style={styles.screen}>
+      <BlurTargetView ref={blurTarget} style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* A) Top bubble: ID card and action buttons. */}
+          <View style={[styles.topBubble, { paddingTop: insets.top + 48 }]}>
+            <GradientFill css={TOP_GRADIENT.css} fallback={TOP_GRADIENT.fallback} style={styles.topBubbleShape} />
 
-            {/* Photo, cropped to its box, with a thin black frame drawn over it. */}
-
-            <View style={styles.avatar}>
-              {/* Your photo if you've set one (Edit profile), else the placeholder. */}
-              {profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
-              ) : (
-                <Image
-                  source={require('../../assets/images/profile/avatar-placeholder.png')}
-                  style={{ position: 'absolute', top: 0, left: AVATAR_IMAGE.left, width: AVATAR_IMAGE.width, height: AVATAR.height }}
-                />
-              )}
+            <View style={styles.idCard}>
+              <StarBorder color={youColors.stars} />
+              <View style={styles.photo}>
+                {profile?.avatar_url ? (
+                  <Image source={{ uri: profile.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                ) : null}
+              </View>
+              <View style={styles.idText}>
+                <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit>
+                  {profile?.name || 'Your name'}
+                </Text>
+                <Text style={styles.handle} numberOfLines={1}>
+                  {username}
+                </Text>
+                {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+              </View>
             </View>
-            <Image source={require('../../assets/images/profile/avatar-frame.svg')} style={styles.avatarFrame} />
 
-            {/* Right side of the card: name and @username. */}
-            <View style={styles.textColumn}>
-              <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit>
-                {profile?.name || 'Your name'}
-              </Text>
-              <Text style={styles.handle} numberOfLines={1}>
-                {username}
-              </Text>
-            </View>
-          </View>
-
-          {/* Action row: Edit profile, Share, and the "..." menu. */}
-          <View style={styles.actions}>
-            <Pressable onPress={() => router.push('/profile/edit')} accessibilityRole="button" style={styles.editButton}>
-              <Image source={require('../../assets/images/profile/edit-pill.svg')} style={StyleSheet.absoluteFill} />
-              <Text style={styles.editText}>Edit profile</Text>
-            </Pressable>
-            <Pressable onPress={share} accessibilityRole="button" accessibilityLabel="Share profile" style={styles.roundButton}>
-              <Image source={require('../../assets/images/profile/round-button.svg')} style={StyleSheet.absoluteFill} />
-              <Image source={require('../../assets/images/profile/share-icon.svg')} style={styles.shareIcon} />
-            </Pressable>
-            <Pressable
-              onPress={() => setMenuOpen((open) => !open)}
-              accessibilityRole="button"
-              accessibilityLabel="More options"
-              style={[styles.roundButton, styles.moreButton]}
-            >
-              <Image source={require('../../assets/images/profile/round-button.svg')} style={StyleSheet.absoluteFill} />
-              <Text style={styles.moreText}>...</Text>
-            </Pressable>
-          </View>
-
-          {/* Small pop-up under "..." with Sign out. */}
-          {menuOpen ? (
-            <View style={styles.menu}>
-              <Pressable onPress={() => supabase.auth.signOut()} accessibilityRole="button">
-                <Text style={styles.menuItem}>Sign out</Text>
+            <View style={styles.actions}>
+              <Pressable
+                onPress={() => router.push('/profile/edit')}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}
+              >
+                <Text style={styles.editText}>Edit profile</Text>
+              </Pressable>
+              <Pressable onPress={share} accessibilityRole="button" accessibilityLabel="Share profile">
+                <Frosted radius={23} blurTarget={blurTarget} style={styles.roundButton}>
+                  <Image source={require('../../assets/images/profile/share-icon.svg')} tintColor={youColors.ink} style={styles.icon} />
+                </Frosted>
+              </Pressable>
+              <Pressable
+                onPress={() => setMenuOpen((open) => !open)}
+                accessibilityRole="button"
+                accessibilityLabel="More options"
+                accessibilityState={{ expanded: menuOpen }}
+              >
+                <Frosted radius={23} blurTarget={blurTarget} style={styles.roundButton}>
+                  <Image source={require('../../assets/images/icons/ellipsis.svg')} style={styles.icon} />
+                </Frosted>
               </Pressable>
             </View>
-          ) : null}
-        </View>
-      </View>
 
-      {/* Stats row below the header. */}
-      <View style={[styles.column, styles.stats]}>
-        <Stat value={stats?.events_attended ?? 0} label="Activities" />
-        <Stat value={stats?.events_hosted ?? 0} label="Hosted" />
-        {/* TODO: no attendance data yet to compute "Shows up". */}
-        <Stat value="—" label="Shows up" />
-      </View>
-
-      {/* Every event tag you picked; change them under Edit profile. */}
-      <View style={[styles.column, styles.interestsCard]}>
-        <Text style={styles.leaderboardTitle}>Event interests</Text>
-        {(profile?.interests ?? []).length === 0 ? (
-          <Text style={styles.emptyText}>Tap Edit profile to pick the events you&apos;re into.</Text>
-        ) : (
-          <View style={styles.interestChips}>
-            {(profile?.interests ?? []).map((interest) => (
-              <View key={interest} style={[styles.chip, styles.interestChip]}>
-                <Text style={styles.chipText}>{interest}</Text>
+            {/* Small pop-up under "..." with Sign out. */}
+            {menuOpen ? (
+              <View style={styles.menu}>
+                <Pressable onPress={() => supabase.auth.signOut()} accessibilityRole="button" style={styles.menuItem}>
+                  <Text style={styles.menuText}>Sign out</Text>
+                </Pressable>
               </View>
-            ))}
+            ) : null}
           </View>
-        )}
-      </View>
 
-      <View style={[styles.column, styles.leaderboardCard]}>
-        <Text style={styles.leaderboardTitle}>Leaderboard</Text>
+          {/* B) 10pt of page background between the bubbles, then C) the bottom bubble. */}
+          <View style={[styles.bottomBubble, { paddingBottom: 120 + insets.bottom }]}>
+            <GradientFill css={BOTTOM_GRADIENT.css} fallback={BOTTOM_GRADIENT.fallback} style={styles.bottomBubbleShape} />
 
-        {userId ? (
-          <View style={styles.youRankCard}>
-            <Text style={styles.youRankLabel}>Your rank</Text>
-            <Text style={styles.youRankValue}>
-              #{leaderboard.find((entry) => entry.profile_id === userId)?.rank ?? '—'}
-            </Text>
-            <Text style={styles.youRankCount}>
-              {leaderboard.find((entry) => entry.profile_id === userId)?.sidequests_went_on ?? 0} sidequests
-            </Text>
-          </View>
-        ) : null}
+            {/* 1. Stats strip: rank bubble (opens the leaderboard) and three counts. */}
+            <Frosted radius={26} blurTarget={blurTarget} style={styles.stats}>
+              <Pressable
+                onPress={() => router.push('/profile/leaderboard')}
+                accessibilityRole="button"
+                accessibilityLabel={`Your rank is ${rank ?? 'not set yet'}. Open leaderboard`}
+                style={({ pressed }) => [styles.rankRing, pressed && styles.pressed]}
+              >
+                <View style={styles.rankBubble}>
+                  <Text style={styles.rankValue}>{rank ? `#${rank}` : '–'}</Text>
+                  <Text style={styles.rankLabel}>RANK</Text>
+                </View>
+              </Pressable>
+              <Stat value={stats?.events_attended ?? 0} label="Activities" />
+              <Divider />
+              <Stat value={stats?.events_hosted ?? 0} label="Hosted" />
+              <Divider />
+              {/* TODO: no attendance history yet to compute "Shows up", so everyone is "New". */}
+              <Stat value="New" label="Shows up" />
+            </Frosted>
 
-        {leaderboard.length === 0 ? (
-          <Text style={styles.emptyText}>No one has ranked yet.</Text>
-        ) : (
-          leaderboard.map((entry) => {
-            const isCurrentUser = entry.profile_id === userId
-            const displayName = entry.username ? `@${entry.username}` : entry.name || 'Unknown user'
-
-            return (
-              <View key={entry.profile_id} style={[styles.leaderboardRow, isCurrentUser && styles.currentUserRow]}>
-                <Text style={styles.rank}>#{entry.rank}</Text>
-                <Text style={styles.leaderboardName} numberOfLines={1}>
-                  {isCurrentUser ? 'You' : displayName}
+            {/* 2. Interests, on one scrollable line. */}
+            <Frosted radius={20} blurTarget={blurTarget} style={styles.into}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.monoLabel} accessibilityRole="header">
+                  Into
                 </Text>
-                <Text style={styles.leaderboardCount}>{entry.sidequests_went_on}</Text>
+                <Pressable
+                  onPress={() => router.push('/profile/interests')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit interests"
+                  hitSlop={12}
+                >
+                  <Text style={styles.linkText}>Edit</Text>
+                </Pressable>
               </View>
-            )
-          })
-        )}
-      </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+                {interests.length === 0 ? (
+                  <Text style={styles.chip}>Pick what you’re into</Text>
+                ) : (
+                  interests.map((interest) => (
+                    <Text key={interest} style={styles.chip}>
+                      {interest}
+                    </Text>
+                  ))
+                )}
+              </ScrollView>
+            </Frosted>
 
-      {/* Link to the Scrapbook: pages for every activity you've been to. */}
-      <View style={[styles.column, styles.scrapbookWrap]}>
-        <Pressable
-          onPress={() => router.push('/scrapbook')}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.scrapbookCard, pressed && { opacity: 0.7 }]}
-        >
-          <View style={styles.scrapbookText}>
-            <Text style={styles.scrapbookTitle}>Scrapbook</Text>
-            <Text style={styles.scrapbookSubtitle}>Photos, notes and scraps from your activities</Text>
+            {/* 3. Scrapbook slot. */}
+            <View style={styles.scrapbook}>
+              <View style={[styles.sectionHeader, styles.scrapbookHeader]}>
+                <Text style={styles.monoLabel} accessibilityRole="header">
+                  Scrapbook
+                </Text>
+                <Pressable onPress={() => router.push('/scrapbook')} accessibilityRole="link" hitSlop={12}>
+                  <Text style={styles.linkText}>See all ›</Text>
+                </Pressable>
+              </View>
+              {/* Your newest pages, straight, newest first. */}
+              <ScrapbookPreview username={profile?.username ?? null} />
+            </View>
           </View>
-          <Text style={styles.scrapbookArrow}>›</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+        </ScrollView>
+      </BlurTargetView>
+    </View>
   )
 }
 
-// One white stat card: a big number with a small label under it.
+// One count in the stats strip: a big number with a small label under it.
 function Stat({ value, label }: { value: number | string; label: string }) {
   return (
     <View style={styles.stat}>
@@ -239,174 +238,148 @@ function Stat({ value, label }: { value: number | string; label: string }) {
   )
 }
 
+// Thin line between two stats; hidden from screen readers.
+function Divider() {
+  return <View style={styles.divider} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+}
+
 const styles = StyleSheet.create({
-  // Page background, green header, and the 376pt centered column everything sits in.
-  screen: { flex: 1, backgroundColor: profileColors.surface },
-  header: { backgroundColor: profileColors.header, alignItems: 'center' },
-  column: { width: '100%', maxWidth: COLUMN_WIDTH, alignSelf: 'center' },
-  // Profile card and the photo inside it (positions are relative to the card).
-  card: { width: CARD.width, height: CARD.height, marginTop: 34, marginLeft: 13 },
-  avatar: {
-    position: 'absolute',
-    left: AVATAR.left,
-    top: AVATAR.top,
-    width: AVATAR.width,
-    height: AVATAR.height,
+  screen: { flex: 1, backgroundColor: youColors.page },
+  // flexGrow lets the bottom bubble stretch to the bottom of the screen on short pages.
+  scrollContent: { flexGrow: 1 },
+  pressed: { opacity: 0.75 },
+
+  // A) Top bubble
+  // zIndex keeps the "..." pop-up above the bottom bubble.
+  topBubble: { paddingHorizontal: 14, paddingBottom: 18, gap: 16, zIndex: 1 },
+  topBubbleShape: { borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
+  idCard: {
+    backgroundColor: youColors.cardCream,
+    borderRadius: 26,
+    paddingVertical: 40,
+    paddingHorizontal: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+    shadowColor: whimColors.ink,
+    shadowOpacity: 0.18,
+    shadowRadius: 26,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+  },
+  photo: {
+    width: 104,
+    height: 126,
+    borderWidth: 3,
+    borderColor: youColors.photoBorder,
+    backgroundColor: whimColors.photoPlaceholder,
     overflow: 'hidden',
   },
-  avatarFrame: { position: 'absolute', left: 36, top: 41, width: 127, height: 140 },
-  // Name and @username text on the right of the card.
-  textColumn: { position: 'absolute', left: TEXT_COLUMN.left, top: 50, width: TEXT_COLUMN.width, alignItems: 'center' },
-  name: { fontFamily: fonts.monoBold, fontSize: 24, lineHeight: 31, color: profileColors.black, textAlign: 'center' },
-  // Figma tops (card-relative): name 50, handle 81, "Into" 118, chips 145.
-  handle: { fontFamily: fonts.mono, fontSize: 16, lineHeight: 21, marginBottom: 16, color: profileColors.handle, textAlign: 'center' },
-  // White rounded interest chips (used in the Event interests section).
-  chip: {
-    height: 36,
-    maxWidth: 67,
-    paddingHorizontal: 14.5,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: profileColors.border,
-    backgroundColor: profileColors.card,
+  // Text column, centered like the original profile card.
+  idText: { flex: 1, gap: 6, alignItems: 'center' },
+  name: { fontFamily: fonts.spaceMonoBold, fontSize: 26, color: youColors.ink, textAlign: 'center' },
+  handle: { fontFamily: fonts.spaceMono, fontSize: 13, color: youColors.handle, textAlign: 'center' },
+  bio: { fontFamily: fonts.interRegular, fontSize: 13, lineHeight: 18, color: youColors.bio, marginTop: 4, textAlign: 'center' },
+  actions: { flexDirection: 'row', gap: 10 },
+  editButton: {
+    flex: 1,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: whimColors.brown,
+    alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: whimColors.brown,
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
-  chipText: { fontFamily: fonts.medium, fontSize: 14, lineHeight: 20.3, color: profileColors.ink },
-  // Card ends at 256; the action row sits at 268 and the header ends at 338.
-  actions: { flexDirection: 'row', alignItems: 'center', marginTop: 12, marginLeft: 20, marginBottom: 44 },
-  // Edit profile pill, plus the round Share and "..." buttons.
-  editButton: { width: 255, height: 26, alignItems: 'center', justifyContent: 'center' },
-  editText: { fontFamily: fonts.monoBold, fontSize: 14, color: profileColors.black },
-  roundButton: { width: 28, height: 26, marginLeft: 14, alignItems: 'center', justifyContent: 'center' },
-  moreButton: { marginLeft: 11 },
-  shareIcon: { width: 19, height: 19 },
-  moreText: { fontFamily: fonts.interBold, fontSize: 16, lineHeight: 19, color: profileColors.black, marginTop: -4 },
-  // The "..." pop-up menu, placed just under the action row.
+  editText: { fontFamily: fonts.spaceMonoBold, fontSize: 15, color: whimColors.brownText },
+  roundButton: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center' },
+  icon: { width: 20, height: 20 },
+  // The "..." pop-up, just under the round buttons.
   menu: {
     position: 'absolute',
-    right: 20,
-    top: 34 + CARD.height + 12 + 26 + 6,
-    backgroundColor: profileColors.card,
+    right: 14,
+    bottom: -40,
+    zIndex: 10,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: profileColors.border,
-    paddingVertical: 10,
     paddingHorizontal: 16,
+    shadowColor: youColors.ink,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
-  menuItem: { fontFamily: fonts.semiBold, fontSize: 15, color: profileColors.ink },
-  // Stats sit 12pt below the header, 20pt side insets, 8pt gaps.
-  stats: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 12 },
-  // Event interests section under the stats; chips wrap onto extra lines.
-  interestsCard: { marginTop: 16, paddingHorizontal: 20 },
-  interestChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  interestChip: { maxWidth: undefined },
-  leaderboardCard: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingBottom: 8,
+  menuItem: { height: 44, justifyContent: 'center' },
+  menuText: { fontFamily: fonts.interSemiBold, fontSize: 15, color: youColors.ink },
+
+  // C) Bottom bubble (marginTop is the 10pt gap of page background).
+  bottomBubble: { flexGrow: 1, marginTop: 10, padding: 16, gap: 14 },
+  bottomBubbleShape: { borderTopLeftRadius: 32, borderTopRightRadius: 32 },
+
+  // 1. Stats strip
+  stats: {
+    padding: 12,
+    paddingRight: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#1E321E',
+    shadowOpacity: 0.16,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 6,
   },
-  leaderboardTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 18,
-    lineHeight: 24,
-    marginBottom: 8,
-    color: profileColors.ink,
+  // Rank bubble: 2pt green ring outside a 3pt cream ring around the brown circle.
+  rankRing: { width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: youColors.ring },
+  rankBubble: {
+    flex: 1,
+    borderRadius: 34,
+    borderWidth: 3,
+    borderColor: whimColors.cream,
+    backgroundColor: whimColors.brown,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  youRankCard: {
-    backgroundColor: '#F2FAF0',
-    borderWidth: 1,
-    borderColor: '#7AB36A',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
+  rankValue: { fontFamily: fonts.interBold, fontSize: 24, color: whimColors.brownText },
+  rankLabel: { fontFamily: fonts.spaceMonoBold, fontSize: 9, letterSpacing: 0.9, color: whimColors.brownSecondary },
+  stat: { flex: 1, alignItems: 'center', gap: 6 },
+  statValue: { fontFamily: fonts.interBold, fontSize: 24, color: youColors.ink },
+  statLabel: {
+    fontFamily: fonts.spaceMonoBold,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: youColors.secondary,
   },
-  youRankLabel: {
-    fontFamily: fonts.regular,
-    fontSize: 12,
-    color: profileColors.slate,
-    marginBottom: 2,
-  },
-  youRankValue: {
-    fontFamily: fonts.bold,
-    fontSize: 22,
-    color: profileColors.ink,
-  },
-  youRankCount: {
-    fontFamily: fonts.regular,
+  divider: { width: 1, alignSelf: 'stretch', marginVertical: 10, backgroundColor: youColors.statDivider },
+
+  // 2. Into box and 3. Scrapbook headers
+  into: { paddingTop: 14, paddingBottom: 16, gap: 12 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
+  monoLabel: {
+    fontFamily: fonts.spaceMonoBold,
     fontSize: 13,
-    color: profileColors.ink,
-    marginTop: 2,
+    letterSpacing: 1.3,
+    textTransform: 'uppercase',
+    color: youColors.ink,
   },
-  leaderboardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  linkText: { fontFamily: fonts.interBold, fontSize: 14, color: youColors.ink },
+  chips: { paddingHorizontal: 16, gap: 6 },
+  chip: {
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: profileColors.border,
-    backgroundColor: profileColors.card,
-    marginBottom: 8,
-  },
-  currentUserRow: {
-    borderColor: '#7AB36A',
-    backgroundColor: '#F2FAF0',
-  },
-  rank: {
-    fontFamily: fonts.monoBold,
-    fontSize: 14,
-    color: profileColors.ink,
-    width: 32,
-  },
-  leaderboardName: {
-    flex: 1,
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: profileColors.ink,
-    marginHorizontal: 8,
-  },
-  leaderboardCount: {
-    fontFamily: fonts.bold,
-    fontSize: 16,
-    color: profileColors.ink,
-  },
-  emptyText: {
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: profileColors.slate,
-    paddingVertical: 8,
-  },
-  // One white stat card with its number and label.
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2.6,
-    paddingTop: 11.1,
-    paddingBottom: 12.9,
-    paddingHorizontal: 5.75,
+    paddingHorizontal: 16,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: profileColors.border,
-    backgroundColor: profileColors.card,
+    overflow: 'hidden',
+    backgroundColor: youColors.page,
+    fontFamily: fonts.interMedium,
+    fontSize: 14,
+    color: youColors.ink,
   },
-  statValue: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 31.9, color: profileColors.ink, textAlign: 'center' },
-  statLabel: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 17.4, color: profileColors.slate, textAlign: 'center' },
-  // Scrapbook link card, same insets and card style as the stats.
-  scrapbookWrap: { paddingHorizontal: 20, marginTop: 12 },
-  scrapbookCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: profileColors.border,
-    backgroundColor: profileColors.card,
-  },
-  scrapbookText: { flex: 1 },
-  scrapbookTitle: { fontFamily: fonts.bold, fontSize: 17, color: profileColors.ink },
-  scrapbookSubtitle: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: profileColors.slate, marginTop: 2 },
-  scrapbookArrow: { fontFamily: fonts.bold, fontSize: 24, color: profileColors.slate },
+
+  // 3. Scrapbook slot (no box of its own)
+  scrapbook: { gap: 12 },
+  scrapbookHeader: { paddingHorizontal: 4 },
 })

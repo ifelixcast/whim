@@ -62,12 +62,13 @@ function RootNavigator() {
         <Stack.Screen name="select-interests" options={{ gestureEnabled: false }} />
       </Stack.Protected>
 
-      {/* Logged in and onboarded: the tab screens in app/(tabs), plus Edit profile and its
-          interest picker (app/profile) opened on top of them. Both draw their own header. */}
+      {/* Logged in and onboarded: the tab screens in app/(tabs), plus Edit profile, its interest
+          picker, and the leaderboard (app/profile) opened on top of them. They draw their own header. */}
       <Stack.Protected guard={!!session && !needsOnboarding}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="profile/edit" />
         <Stack.Screen name="profile/interests" />
+        <Stack.Screen name="profile/leaderboard" />
         {/* Scrapbook: the list of pages (opened from the You tab), and the page editor. */}
         <Stack.Screen
           name="scrapbook/index"
