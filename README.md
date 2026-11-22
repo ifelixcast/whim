@@ -27,7 +27,6 @@ Then start the app (`-c` clears the cache, which you need after creating or edit
 ```bash
 npx expo start -c
 ```
-
 Scan the QR code with Expo Go. Sign up, post an activity with the + button, and check that it shows up on the Home tab.
 
 **Note** Supabase Auth requires email confirmation by default, so after signing up you'll

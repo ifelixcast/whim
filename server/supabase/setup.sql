@@ -35,6 +35,26 @@ select
 from public.profiles p;
 
 ------------------------------------------------------------
+-- 2b. Sidequest leaderboard
+--     sidequests = activities attended + activities hosted, i.e. the "Activities" and
+--     "Hosted" numbers on the profile page (both come from profile_stats above).
+--     Only people with at least one sidequest are ranked.
+------------------------------------------------------------
+create or replace view public.sidequest_leaderboard
+with (security_invoker = true) as
+select
+  p.id as profile_id,
+  p.username,
+  p.name,
+  (s.events_attended + s.events_hosted) as sidequests_went_on,
+  row_number() over (
+    order by (s.events_attended + s.events_hosted) desc, p.id
+  ) as rank
+from public.profiles p
+join public.profile_stats s on s.id = p.id
+where (s.events_attended + s.events_hosted) > 0;
+
+------------------------------------------------------------
 -- 3. Row Level Security policies (first pass)
 --    Logged-in users can read everything; they can only
 --    write rows that belong to them.
@@ -96,3 +116,36 @@ create policy "users delete own reviews" on public.reviews
 -- 4. Interests shown as the "Into" chips on the profile page
 ------------------------------------------------------------
 alter table public.profiles add column if not exists interests text[] not null default '{}';
+
+------------------------------------------------------------
+-- 4b. Tracks whether someone has seen the "pick your interests" screen after signing up.
+--     Run this once in the Supabase SQL editor. Existing users will see the screen once too;
+--     to skip that for them, also run:  update public.profiles set onboarding_completed = true;
+------------------------------------------------------------
+alter table public.profiles add column if not exists onboarding_completed boolean not null default false;
+
+------------------------------------------------------------
+-- 5. Profile photos: an avatar_url column plus a public
+--    "avatars" storage bucket. Each user can only write files
+--    inside a folder named after their own id (avatars/<id>/...).
+------------------------------------------------------------
+alter table public.profiles add column if not exists avatar_url text;
+
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+create policy "users upload own avatar" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "users replace own avatar" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+create policy "users delete own avatar" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+------------------------------------------------------------
+-- 6. Phone number, edited on the Edit profile screen.
+------------------------------------------------------------
+alter table public.profiles add column if not exists phone text;
