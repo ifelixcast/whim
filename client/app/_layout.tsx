@@ -69,6 +69,8 @@ function RootNavigator() {
         <Stack.Screen name="profile/edit" />
         <Stack.Screen name="profile/interests" />
         <Stack.Screen name="profile/leaderboard" />
+        {/* New whim: opened by the orange + in the tab bar, slides up as a modal. */}
+        <Stack.Screen name="create" options={{ presentation: 'modal' }} />
         {/* Scrapbook: the list of pages (opened from the You tab), and the page editor. */}
         <Stack.Screen
           name="scrapbook/index"

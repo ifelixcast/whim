@@ -3,6 +3,7 @@
 // Used by app/(tabs)/_layout.tsx. Tab labels come from each screen's `title` option there.
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
+import { router } from 'expo-router'
 import type { BottomTabBarProps } from 'expo-router/tabs'
 import { fonts, tabColors } from '../lib/theme'
 
@@ -39,11 +40,12 @@ export default function NavBar({ state, descriptors, navigateToTab, insets }: Bo
         }
 
         // The orange + (create activity) button: no label, raised above the bar.
+        // It opens the New whim screen (app/create.tsx) as a modal instead of switching tabs.
         if (route.name === CREATE_ACTIVITY_ROUTE) {
           return (
             <View key={route.key} style={styles.tab}>
               <Pressable
-                onPress={onPress}
+                onPress={() => router.push('/create')}
                 accessibilityRole="button"
                 accessibilityLabel="Create activity"
                 accessibilityState={{ selected: focused }}
