@@ -32,7 +32,18 @@
           "image": "./client/assets/images/brand/splash-logo.png",
           "imageWidth": 389
         }
-      ]
+      ],
+      "expo-web-browser",
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Whim! uses your photos so you can choose a profile picture and add photos to your scrapbook pages.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
