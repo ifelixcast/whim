@@ -55,8 +55,20 @@ export type Event = {
   lng: number | null
   max_participants: number | null // guests allowed, not counting the host
   status: EventStatus
+  // The columns below come from server/supabase/create_event.sql.
+  category: string | null // one of shared/categories.ts
+  location_name: string | null
+  visibility: EventVisibility
+  requires_approval: boolean
+  cover_url: string | null // public URL in the "event-photos" bucket
+  backdrop: EventBackdrop
+  backdrop_url: string | null // set when backdrop is 'photo'
   created_at: string
 }
+
+// Who can see an event, and the background it's shown on (picked on the create screen).
+export type EventVisibility = 'nearby' | 'school' | 'friends'
+export type EventBackdrop = 'meadow' | 'mist' | 'paper' | 'cocoa' | 'photo'
 
 // Someone who joined an event (the "event_buddies" table).
 export type EventBuddy = {
