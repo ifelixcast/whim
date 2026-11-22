@@ -47,11 +47,13 @@ export const editProfileColors = {
   deleteText: '#FFFFFF',
 }
 
-// Bottom tab bar (Figma "Nav bar tabs"); surfaces and border reuse profileColors.
+// Bottom tab bar: white floating bar, teal selected tab, orange + button.
 export const tabColors = {
-  active: '#0B5F5C',
-  inactive: '#5B7078',
-  createActivity: '#F04400', // the orange + (create activity) button
+  active: '#1F4F4A',
+  inactive: '#565D58',
+  createActivity: '#E4502A', // the orange + (create activity) button
+  bar: '#FFFFFF',
+  shadow: '#1E321E',
 }
 
 // Edit profile and interest picker (Whim green redesign).
@@ -70,6 +72,23 @@ export const whimColors = {
   divider: 'rgba(22,58,42,0.12)',
   dashed: 'rgba(22,58,42,0.4)', // dashed outlines on unpicked chips and the interests box
   glass: 'rgba(255,255,255,0.3)', // see-through fill behind dashed outlines
+}
+
+// You tab (profile) redesign: two gradient "bubbles" with frosted cards on them.
+export const youColors = {
+  page: '#F2F1EC', // page background, also the gap between the bubbles and the chip fill
+  ink: '#1C2420',
+  secondary: '#5A5F58',
+  cardCream: 'rgba(255,251,239,0.88)', // ID card
+  frosted: 'rgba(246,245,240,0.62)', // tint over the blur on frosted cards
+  frostedBorder: 'rgba(255,255,255,0.55)',
+  stars: '#8C8A84',
+  photoBorder: '#1E2B22',
+  handle: '#4A4A44',
+  bio: '#2E2E28',
+  ring: '#7EA46E', // outer ring of the rank bubble
+  statDivider: '#E6DFCB',
+  scrapPaper: '#FAF6EC', // behind scrapbook page previews while they load
 }
 
 // Activity details screen (from whim-prototype.html); text and borders reuse profileColors.

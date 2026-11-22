@@ -1,8 +1,5 @@
-// Full-screen gradient drawn behind a screen's content (Edit profile and the interest picker).
-// React Native 0.80+ draws CSS gradients itself through experimental_backgroundImage; on web and
-// older versions we fall back to a plain vertical expo-linear-gradient with the same base colors.
-import { Platform, StyleSheet, View } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+// Full-screen gradient drawn behind a screen's content (Edit profile, the interest picker, onboarding).
+import GradientFill, { GradientFallback } from './GradientFill'
 
 type Variant = 'picker' | 'edit'
 
@@ -27,19 +24,11 @@ const CSS: Record<Variant, string> = {
 }
 
 // The fallback: just the vertical base, without the blobs.
-const FALLBACK: Record<Variant, { colors: [string, string, ...string[]]; locations: [number, number, ...number[]] }> = {
+const FALLBACK: Record<Variant, GradientFallback> = {
   picker: { colors: ['#A9D2EE', '#C3D49A', '#B6C873', '#A4BC5A'], locations: [0, 0.35, 0.7, 1] },
   edit: { colors: ['#A9C0CE', '#7EA46E', '#5A9148', '#6C9C57'], locations: [0, 0.4, 0.7, 1] },
 }
 
-// Native CSS gradients need React Native 0.80 or newer, and aren't drawn on web.
-const rnVersion = Platform.constants.reactNativeVersion
-const supportsCssGradients = Platform.OS !== 'web' && rnVersion.major === 0 && rnVersion.minor >= 80
-
 export default function GradientBackground({ variant }: { variant: Variant }) {
-  if (supportsCssGradients) {
-    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { experimental_backgroundImage: CSS[variant] }]} />
-  }
-  const { colors, locations } = FALLBACK[variant]
-  return <LinearGradient pointerEvents="none" colors={colors} locations={locations} style={StyleSheet.absoluteFill} />
+  return <GradientFill css={CSS[variant]} fallback={FALLBACK[variant]} />
 }
