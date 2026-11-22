@@ -140,3 +140,48 @@ export async function signedPhotoUrls(paths: string[]) {
 export function photoPaths(items: ScrapbookItem[]) {
   return items.flatMap((item) => (item.kind === 'photo' ? [item.path] : []))
 }
+
+// ---- Loading your pages ----
+// One entry per activity you joined or hosted (newest first), with your saved page for it,
+// or the default page if you haven't started one. Cancelled activities are left out.
+export type ScrapbookEntry = {
+  eventId: number
+  title: string
+  startsAt: string
+  hosted: boolean
+  paper: string
+  items: ScrapbookItem[]
+  started: boolean
+}
+
+export async function loadScrapbookEntries(userId: string, limit?: number): Promise<ScrapbookEntry[]> {
+  // Events you joined...
+  const { data: joinedRows } = await supabase.from('event_buddies').select('event_id').eq('profile_id', userId)
+  const joinedIds: number[] = (joinedRows ?? []).map((row) => row.event_id)
+  // ...plus events you hosted.
+  const filter = joinedIds.length > 0 ? `profile_id.eq.${userId},id.in.(${joinedIds.join(',')})` : `profile_id.eq.${userId}`
+  let query = supabase
+    .from('events')
+    .select('id, title, starts_at, profile_id, status')
+    .or(filter)
+    .neq('status', 'cancelled')
+    .order('starts_at', { ascending: false })
+  if (limit) query = query.limit(limit)
+  const { data: events } = await query
+
+  const { data: pages } = await supabase.from('scrapbook_pages').select('event_id, paper, items').eq('profile_id', userId)
+  const pageByEvent = new Map<number, { paper: string; items: ScrapbookItem[] }>((pages ?? []).map((page) => [page.event_id, page]))
+
+  return (events ?? []).map((event) => {
+    const page = pageByEvent.get(event.id)
+    return {
+      eventId: event.id,
+      title: event.title,
+      startsAt: event.starts_at,
+      hosted: event.profile_id === userId,
+      paper: page?.paper ?? DEFAULT_PAPER,
+      items: page?.items ?? defaultItems(event.title),
+      started: !!page,
+    }
+  })
+}
