@@ -91,6 +91,25 @@ export const youColors = {
   scrapPaper: '#FAF6EC', // behind scrapbook page previews while they load
 }
 
+// New whim (create activity) screen.
+export const createColors = {
+  ink: '#1C2420',
+  secondary: '#3F453D',
+  muted: '#5A5F58',
+  placeholder: '#7E837B',
+  border: '#E2DED5',
+  field: '#FFFFFF',
+  page: '#F2F1EC',
+  brown: '#4A2A22',
+  brownText: '#F4EFE2',
+  green: '#1F5C46', // selected time, radio cards, switch
+  polaroid: '#FFFDF6',
+  coverEmpty: '#EFEBE0',
+  coverDashed: '#C9C3B4',
+  radioOff: '#B9B5AA',
+  switchOff: '#C9C5BA',
+}
+
 // Activity details screen (from whim-prototype.html); text and borders reuse profileColors.
 export const detailColors = {
   accent: '#0B5F5C', // same teal as brand.deepTeal, for "You're in"
